@@ -6,9 +6,6 @@ import 'score_manager.dart';
 
 /// Thin wrapper around FlameAudio that never throws if a sound file is missing
 /// and respects the user's mute setting.
-///
-/// TODO: drop real files into `assets/audio/` (see assets/audio/README.md).
-/// Until then every call here simply no-ops on failure so the game still runs.
 class AudioManager {
   AudioManager(this.storage);
 
