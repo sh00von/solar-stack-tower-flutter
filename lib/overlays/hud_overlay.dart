@@ -41,17 +41,6 @@ class HudOverlay extends StatelessWidget {
                     label: '$coins',
                   ),
                 ),
-                if (game.scoreManager.shieldLevel >= 1) ...[
-                  const SizedBox(width: 10),
-                  ValueListenableBuilder<int>(
-                    valueListenable: game.shieldsNotifier,
-                    builder: (_, shields, _) => _Pill(
-                      icon: Icons.shield,
-                      iconColor: Colors.blueAccent,
-                      label: '$shields',
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

@@ -8,6 +8,7 @@ import 'components/block.dart';
 import 'components/falling_block.dart';
 import 'components/particle.dart';
 import 'game/theme_zones.dart';
+import 'managers/ad_manager.dart';
 import 'managers/audio_manager.dart';
 import 'managers/score_manager.dart';
 
@@ -19,7 +20,6 @@ class Overlays {
   static const menu = 'menu';
   static const hud = 'hud';
   static const gameOver = 'gameOver';
-  static const settings = 'settings';
   static const pause = 'pause';
 }
 
@@ -28,10 +28,15 @@ class Overlays {
 /// blocks, themed visual zones with particles, and haptics. Rendering is done
 /// by hand on the canvas in [render] for the proper 3-face isometric look.
 class StackGame extends FlameGame {
-  StackGame({required this.scoreManager, required this.audioManager});
+  StackGame({
+    required this.scoreManager,
+    required this.audioManager,
+    required this.adManager,
+  });
 
   final ScoreManager scoreManager;
   final AudioManager audioManager;
+  final AdManager adManager;
 
   // ---- Isometric projection tunables ----------------------------------
   static const double _isoX = 0.62;
@@ -59,8 +64,6 @@ class StackGame extends FlameGame {
       ValueNotifier(BlockPower.none);
   final ValueNotifier<bool> slowMoNotifier = ValueNotifier(false);
   final ValueNotifier<String> planetNotifier = ValueNotifier(kZones.first.name);
-  final ValueNotifier<int> shieldsNotifier = ValueNotifier(0);
-  
   /// Selected checkpoint index for Journey starting level.
   final ValueNotifier<int> selectedJourneyCheckpointNotifier = ValueNotifier(0);
 
@@ -88,7 +91,6 @@ class StackGame extends FlameGame {
   double _bannerTimer = 0;
   bool _paused = false;
   bool _journeyMode = false;
-  String _settingsReturn = Overlays.menu; // where Settings' Back returns to
 
   bool get isPaused => _paused;
 
@@ -178,7 +180,6 @@ class StackGame extends FlameGame {
     coinsNotifier.value = 0;
     bannerNotifier.value = null;
     slowMoNotifier.value = false;
-    shieldsNotifier.value = scoreManager.shieldLevel >= 1 ? 1 : 0;
     lastCompletedMissions = [];
 
     // Journey starts at the selected checkpoint floor; Classic at Earth (0).
@@ -240,22 +241,7 @@ class StackGame extends FlameGame {
       ..remove(Overlays.pause)
       ..remove(Overlays.hud)
       ..remove(Overlays.gameOver)
-      ..remove(Overlays.settings)
       ..add(Overlays.menu);
-  }
-
-  /// Open settings, remembering which overlay to restore on Back.
-  void openSettings(String from) {
-    _settingsReturn = from;
-    overlays
-      ..remove(from)
-      ..add(Overlays.settings);
-  }
-
-  void closeSettings() {
-    overlays
-      ..remove(Overlays.settings)
-      ..add(_settingsReturn);
   }
 
   void _spawnMoving() {
@@ -267,10 +253,9 @@ class StackGame extends FlameGame {
     var power = BlockPower.none;
     _blocksSincePower++;
     if (nextLevel >= 4 && _blocksSincePower >= 7 && _rng.nextDouble() < 0.8) {
-      // Calculate weighted selection for power-ups based on ZoneTheme biases & magnet upgrades
       final slowMoWeight = 1.0 + _theme.slowMoChanceBias;
       final wideWeight = 1.0 + _theme.wideChanceBias;
-      final magnetWeight = 1.0 + _theme.magnetChanceBias + (scoreManager.magnetLevel - 1) * 0.08;
+      final magnetWeight = 1.0 + _theme.magnetChanceBias;
       final totalWeight = slowMoWeight + wideWeight + magnetWeight;
 
       final val = _rng.nextDouble() * totalWeight;
@@ -289,12 +274,10 @@ class StackGame extends FlameGame {
     var sx = below.sx;
     var sz = below.sz;
     if (power == BlockPower.wide) {
-      // Oversized so a perfect drop regrows the tower's width (upgraded by wideLevel).
-      final currentWideRecovery = wideRecovery + (scoreManager.wideLevel - 1) * 10.0;
       if (axis == SlideAxis.x) {
-        sx = min(below.sx + currentWideRecovery, initialFootprint);
+        sx = min(below.sx + wideRecovery, initialFootprint);
       } else {
-        sz = min(below.sz + currentWideRecovery, initialFootprint);
+        sz = min(below.sz + wideRecovery, initialFootprint);
       }
     }
 
@@ -423,22 +406,6 @@ class StackGame extends FlameGame {
       _earnCoins(1);
       _spawnPerfectParticles(m);
 
-      // Check for shield recharge
-      if (scoreManager.shieldLevel >= 2 && shieldsNotifier.value < 1) {
-        final targetStreak = scoreManager.shieldLevel == 2
-            ? 15
-            : scoreManager.shieldLevel == 3
-                ? 12
-                : scoreManager.shieldLevel == 4
-                    ? 10
-                    : 8;
-        if (_perfectStreak > 0 && _perfectStreak % targetStreak == 0) {
-          shieldsNotifier.value = 1; // max capacity is 1
-          _banner('SHIELD RECHARGED!');
-          audioManager.playPowerUp();
-        }
-      }
-
       _place(m);
       return;
     }
@@ -458,26 +425,6 @@ class StackGame extends FlameGame {
     final overlap = overlapHi - overlapLo;
 
     if (overlap <= 0) {
-      // Shield Save Logic:
-      if (shieldsNotifier.value > 0) {
-        shieldsNotifier.value = 0; // consume the shield
-        _banner('SHIELD SAVED!');
-        _flash = 0.8;
-        _shake = 0.25;
-        _popScale = 1.15;
-        audioManager.playPerfect(1); // Play high perfect tone
-
-        // Snap block perfectly
-        if (onX) {
-          m.cx = _top.cx;
-        } else {
-          m.cz = _top.cz;
-        }
-        _spawnShieldParticles(m);
-        _place(m);
-        return;
-      }
-
       _addFalling(m, onX ? (movingC < belowC ? -1 : 1) : 0,
           onX ? 0 : (movingC < belowC ? -1 : 1));
       _moving = null;
@@ -520,9 +467,9 @@ class StackGame extends FlameGame {
   void _place(TowerBlock m) {
     _blocks.add(m);
 
-    // Slow-mo activates once its block is placed (upgraded by slowMoLevel).
+    // Slow-mo activates once its block is placed.
     if (m.power == BlockPower.slowMo) {
-      _slowMoTimer = 4.0 + (scoreManager.slowMoLevel - 1) * 1.0;
+      _slowMoTimer = 4.0;
       slowMoNotifier.value = true;
     }
 
@@ -622,20 +569,6 @@ class StackGame extends FlameGame {
     }
   }
 
-  void _spawnShieldParticles(TowerBlock m) {
-    for (var i = 0; i < 16; i++) {
-      _particles.add(Particle(
-        x: m.cx + (_rng.nextDouble() - 0.5) * m.sx,
-        y: m.yTop,
-        z: m.cz + (_rng.nextDouble() - 0.5) * m.sz,
-        vx: (_rng.nextDouble() - 0.5) * 160,
-        vy: 140 + _rng.nextDouble() * 180,
-        vz: (_rng.nextDouble() - 0.5) * 160,
-        color: const Color(0xFF64B5F6), // blue shield glow color
-        size: 4 + _rng.nextDouble() * 3,
-      ));
-    }
-  }
 
   // ---------------------------------------------------------------------
   // Game over + revive
@@ -647,8 +580,7 @@ class StackGame extends FlameGame {
     powerNotifier.value = BlockPower.none;
     slowMoNotifier.value = false;
     audioManager.playGameOver();
-
-    // TODO: show interstitial ad here (wire up google_mobile_ads later).
+    adManager.onGameOver();
 
     final runFloor = _blocks.isEmpty ? 0 : _top.level;
     if (_journeyMode) {
@@ -681,9 +613,7 @@ class StackGame extends FlameGame {
   /// Continue by watching a rewarded ad.
   void continueWithAd() {
     if (!canReviveWithAd) return;
-    // TODO: rewarded ad "continue" hook — show the ad, then on the reward
-    // callback call _revive(). For now we grant it directly so the flow works.
-    _revive();
+    adManager.showRewarded(onRewarded: _revive);
   }
 
   void _revive() {

@@ -4,13 +4,13 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'managers/ad_manager.dart';
 import 'managers/audio_manager.dart';
 import 'managers/score_manager.dart';
 import 'overlays/game_over_overlay.dart';
 import 'overlays/hud_overlay.dart';
 import 'overlays/menu_overlay.dart';
 import 'overlays/pause_overlay.dart';
-import 'overlays/settings_overlay.dart';
 import 'stack_game.dart';
 
 Future<void> main() async {
@@ -33,10 +33,13 @@ Future<void> main() async {
   await scoreManager.load();
   final audioManager = AudioManager(scoreManager);
   await audioManager.preload();
+  final adManager = AdManager();
+  await adManager.initialize();
 
   final game = StackGame(
     scoreManager: scoreManager,
     audioManager: audioManager,
+    adManager: adManager,
   );
 
   runApp(StackApp(game: game));
@@ -60,14 +63,13 @@ class StackApp extends StatelessWidget {
       // A full-screen tap anywhere drops the current block.
       home: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onTapDown: (_) => game.onTapDrop(),
+        onTap: () => game.onTapDrop(),
         child: GameWidget<StackGame>(
           game: game,
           overlayBuilderMap: {
             Overlays.menu: (_, g) => MenuOverlay(game: g),
             Overlays.hud: (_, g) => HudOverlay(game: g),
             Overlays.gameOver: (_, g) => GameOverOverlay(game: g),
-            Overlays.settings: (_, g) => SettingsOverlay(game: g),
             Overlays.pause: (_, g) => PauseOverlay(game: g),
           },
         ),

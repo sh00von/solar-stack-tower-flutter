@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../stack_game.dart';
 
+
 /// Shown when a drop misses. Surfaces score, best, coins earned this run, an
 /// optional **Continue** (revive) and a big instant **Retry**.
 class GameOverOverlay extends StatefulWidget {
@@ -97,27 +98,28 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
             ],
             const SizedBox(height: 36),
             if (showContinue) ...[
-              FilledButton.icon(
-                onPressed: () async {
-                  if (game.canReviveWithCoins) {
-                    await game.continueWithCoins();
-                  } else {
-                    game.continueWithAd();
-                  }
-                },
-                icon: Icon(game.canReviveWithCoins
-                    ? Icons.monetization_on
-                    : Icons.ondemand_video),
-                label: Text(game.canReviveWithCoins
-                    ? 'Continue (${StackGame.reviveCost})'
-                    : 'Continue (Ad)'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 40, vertical: 16),
-                  textStyle: const TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.bold),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (game.canReviveWithCoins)
+                    _ReviveButton(
+                      icon: Icons.monetization_on,
+                      iconColor: Colors.amber,
+                      label: '${StackGame.reviveCost} coins',
+                      color: const Color(0xFF1B5E20),
+                      onPressed: () async => game.continueWithCoins(),
+                    ),
+                  if (game.canReviveWithCoins && game.canReviveWithAd)
+                    const SizedBox(width: 12),
+                  if (game.canReviveWithAd)
+                    _ReviveButton(
+                      icon: Icons.ondemand_video,
+                      iconColor: Colors.lightBlueAccent,
+                      label: 'Watch Ad',
+                      color: const Color(0xFF0D47A1),
+                      onPressed: () => game.continueWithAd(),
+                    ),
+                ],
               ),
               const SizedBox(height: 16),
             ],
@@ -133,6 +135,36 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ReviveButton extends StatelessWidget {
+  const _ReviveButton({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.color,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final Color color;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, color: iconColor, size: 20),
+      label: Text(label),
+      style: FilledButton.styleFrom(
+        backgroundColor: color,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
     );
   }

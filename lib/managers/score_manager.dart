@@ -17,10 +17,6 @@ class ScoreManager {
   static const _mPerfectKey = 'mission_perfect';
   static const _mGamesKey = 'mission_games';
   
-  static const _shieldLevelKey = 'shield_level';
-  static const _slowMoLevelKey = 'slowmo_level';
-  static const _wideLevelKey = 'wide_level';
-  static const _magnetLevelKey = 'magnet_level';
 
   SharedPreferences? _prefs;
 
@@ -35,10 +31,6 @@ class ScoreManager {
   int _mPerfect = 5;
   int _mGames = 5;
 
-  int _shieldLevel = 0;
-  int _slowMoLevel = 1;
-  int _wideLevel = 1;
-  int _magnetLevel = 1;
 
   int get best => _best;
   int get journeyBest => _journeyBest;
@@ -49,10 +41,6 @@ class ScoreManager {
   bool get soundOn => !_muted;
   int get bestFloor => _bestFloor;
 
-  int get shieldLevel => _shieldLevel;
-  int get slowMoLevel => _slowMoLevel;
-  int get wideLevel => _wideLevel;
-  int get magnetLevel => _magnetLevel;
 
   /// Load all stored values. Safe to call before runApp.
   Future<void> load() async {
@@ -68,10 +56,6 @@ class ScoreManager {
     _mPerfect = _prefs?.getInt(_mPerfectKey) ?? 5;
     _mGames = _prefs?.getInt(_mGamesKey) ?? 5;
 
-    _shieldLevel = _prefs?.getInt(_shieldLevelKey) ?? 0;
-    _slowMoLevel = _prefs?.getInt(_slowMoLevelKey) ?? 1;
-    _wideLevel = _prefs?.getInt(_wideLevelKey) ?? 1;
-    _magnetLevel = _prefs?.getInt(_magnetLevelKey) ?? 1;
   }
 
   /// Update the best score if [score] beats it. Returns true on a new record.
@@ -100,11 +84,6 @@ class ScoreManager {
     }
   }
 
-  Future<void> addCoins(int amount) async {
-    _coins += amount;
-    await _prefs?.setInt(_coinsKey, _coins);
-  }
-
   /// Try to spend [amount] coins. Returns false if there aren't enough.
   Future<bool> spendCoins(int amount) async {
     if (_coins < amount) return false;
@@ -113,25 +92,11 @@ class ScoreManager {
     return true;
   }
 
-  Future<void> upgradeShield() async {
-    _shieldLevel++;
-    await _prefs?.setInt(_shieldLevelKey, _shieldLevel);
+  Future<void> addCoins(int amount) async {
+    _coins += amount;
+    await _prefs?.setInt(_coinsKey, _coins);
   }
 
-  Future<void> upgradeSlowMo() async {
-    _slowMoLevel++;
-    await _prefs?.setInt(_slowMoLevelKey, _slowMoLevel);
-  }
-
-  Future<void> upgradeWide() async {
-    _wideLevel++;
-    await _prefs?.setInt(_wideLevelKey, _wideLevel);
-  }
-
-  Future<void> upgradeMagnet() async {
-    _magnetLevel++;
-    await _prefs?.setInt(_magnetLevelKey, _magnetLevel);
-  }
 
   Future<void> incrementGames() async {
     _games++;

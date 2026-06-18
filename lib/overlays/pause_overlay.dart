@@ -38,12 +38,6 @@ class PauseOverlay extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _MenuButton(
-                icon: Icons.settings,
-                label: 'SETTINGS',
-                onPressed: () => game.openSettings(Overlays.pause),
-              ),
-              const SizedBox(height: 16),
-              _MenuButton(
                 icon: Icons.home,
                 label: 'MAIN MENU',
                 color: Colors.redAccent,
