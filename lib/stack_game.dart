@@ -83,6 +83,7 @@ class StackGame extends FlameGame {
   int _perfectStreak = 0;
   int _maxCombo = 0;
   int _coinsThisRun = 0;
+  int _coinsCommittedInRun = 0;
   int _revivesUsed = 0;
   int _blocksSincePower = 0;
   int _nextMilestone = 0;
@@ -166,6 +167,7 @@ class StackGame extends FlameGame {
     _perfectStreak = 0;
     _maxCombo = 0;
     _coinsThisRun = 0;
+    _coinsCommittedInRun = 0;
     _revivesUsed = 0;
     _blocksSincePower = 0;
     _nextMilestone = 0;
@@ -174,6 +176,7 @@ class StackGame extends FlameGame {
     _flash = 0;
     _shake = 0;
     _popScale = 1;
+    await scoreManager.incrementGames();
     scoreNotifier.value = 0;
     comboNotifier.value = 0;
     multiplierNotifier.value = 1;
@@ -591,9 +594,8 @@ class StackGame extends FlameGame {
     await scoreManager.maybeUpdateBestCombo(_maxCombo);
     await scoreManager.updateBestFloor(runFloor);
     selectedJourneyCheckpointNotifier.value = furthestPlanet;
-    await scoreManager.incrementGames();
-    await scoreManager.addCoins(_coinsThisRun);
-    _coinsThisRun = 0;
+    await scoreManager.addCoins(_coinsThisRun - _coinsCommittedInRun);
+    _coinsCommittedInRun = _coinsThisRun;
 
     // Evaluate missions after lifetime stats are updated.
     lastCompletedMissions = await scoreManager.claimCompletedMissions();
